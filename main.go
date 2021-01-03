@@ -12,6 +12,7 @@ var (
 		"Machine Learning A-Z Template Folder": true,
 		"HandOnML":                             true,
 		"MLProject":                            true,
+		".ipynb_checkpoints":			true,
 	}
 )
 
