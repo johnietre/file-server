@@ -1,5 +1,11 @@
 #include "tree.hpp"
 
+/*
+ * Better combine the removeChild(), removeSibling() and ~Node() methods
+ * Possibly handle case where remove method removes self
+ * Handle for duplicate names in children/siblings (when adding sibling/child)
+ */
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -10,54 +16,70 @@ Node::Node(string name, char type, int lastModified)
       children(nullptr), prev(nullptr), next(nullptr), numSiblings(1) {}
 
 Node::~Node() {
-  cout << name << '\n';
+  #ifdef DEBUG
+  printf("Deleting %s (type: %c)\n", this->fullPath().c_str(), type);
+  #endif
   for (; children != nullptr; children = children->next)
     delete children;
+  if (name == "folder1") {
+    cout << "folder1";
+    cout << (prev == nullptr) << '\n';
+    cout << (next == nullptr) << '\n';
+  }
   if (prev != nullptr) {
     prev->next = next;
   } else {
     if (parent != nullptr)
       parent->children = next;
   }
-  if (next != nullptr) {
+  if (next != nullptr)
     next->prev = prev;
-  }
 }
 
 void Node::addChild(Node *node) {
+  node->parent = this;
   if (children == nullptr)
     children = node;
   else
     children->addSibling(node);
 }
 
-void Node::removeChild(string name) {
-  Node *n = children;
-  for (; n != nullptr; n = n->next) {
-    if (n->name == name) {
-      this->removeChild(n);
-      break;
-    }
+// returns nullptr if path already exists
+Node* Node::addChild(string path, char type) {
+  Node *n = this;
+  string part = "";
+  for (char c : path) {
+    if (c == '/') {
+      if (part == ".")
+        continue;
+      n = n->findChild(part);
+      if (n == nullptr)
+        return n;
+    } else
+      part += c;
   }
+  if (n->findChild(part) != nullptr)
+    return nullptr;
+  Node *child = new Node(path, type);
+  n->addChild(child);
+  return child;
+}
+
+Node* Node::findChild(string name) {
+  return (children == nullptr) ? nullptr : children->findSibling(name);
+}
+
+void Node::removeChild(string name) {
+  Node *n = findChild(name);
+  if (n != nullptr)
+    delete n;
 }
 
 void Node::removeChild(Node *node) {
-  Node *n = children;
-  for (; n != nullptr; n = n->next) {
-    if (n == node) {
-      if (n->prev != nullptr)
-        n->prev->next = n->next;
-      if (n->next != nullptr)
-        n->next->prev = n->prev;
-      if (n == children)
-        children = n->next;
-      if (n->type == 'd') {
-        for (; n->children != nullptr; n->children = n->children->next)
-          n->removeChild(n->children);
-      }
+  if (children != nullptr) {
+    Node *n = children->findSibling(node->name);
+    if (n != nullptr)
       delete n;
-      return;
-    }
   }
 }
 
@@ -70,10 +92,23 @@ void Node::addSibling(Node *node) {
   }
   n->next = node;
   node->prev = n;
+  node->parent = n->parent;
   node->numSiblings = n->numSiblings;
 }
 
-Node *Node::getFirst() {
+Node* Node::findSibling(string name) {
+  Node *n = this;
+  for (; n != nullptr && n->name != name; n = n->next);
+  return n;
+}
+
+void Node::removeSibling(Node *node) {
+  Node *n = this->findSibling(node->name);
+  if (n != nullptr)
+    delete n;
+}
+
+Node *Node::getFirstSibling() {
   Node *n = this;
   for (; n->prev != nullptr; n = n->prev)
     ;
@@ -83,9 +118,17 @@ Node *Node::getFirst() {
 vector<Node *> Node::siblingsToVector() {
   vector<Node *> v(numSiblings);
   int i = 0;
-  for (Node *n = getFirst(); n != nullptr; n = n->next)
+  for (Node *n = getFirstSibling(); n != nullptr; n = n->next)
     v[i++] = n;
   return v;
+}
+
+vector<Node*> Node::childrenToVector() {
+  if (children == nullptr) {
+    vector<Node*> v;
+    return v;
+  }
+  return children->siblingsToVector();
 }
 
 Node *Node::find(string path) { return nullptr; }
@@ -96,80 +139,3 @@ string Node::fullPath() {
     path = p->name + "/" + path;
   return path;
 }
-
-// LLNode::LLNode(TreeNode *node) : node(node), next(nullptr) {}
-
-// void LLNode::append(TreeNode *node) {
-//   LLNode *n = this;
-//   while (n->next != nullptr)
-//     n = n->next;
-//   n->next = new LLNode(node);
-// }
-
-// TreeNode::TreeNode(string name, char type) : name(name), type(type),
-// children(nullptr) {}
-
-// void TreeNode::addChild(TreeNode *node) {
-//   node->parent = this;
-//   children->append(node);
-// }
-
-// void TreeNode::removeChild(string name) {
-//   LLNode *ln = children, *prev = nullptr;
-//   for (; ln != nullptr; prev = ln, ln = ln->next) {
-//     if (ln->node->name == name)
-//       break;
-//   }
-//   if (ln != nullptr) {
-//     if (ln->node->type == 'd') {
-//       LLNode *nietos = ln->node->children; // spanish for grandchildren
-//       for (; nietos != nullptr; nietos = nietos->next)
-//         ln->node->removeChild(nietos->node->name);
-//     }
-//     if (prev != nullptr) {
-//       prev->next = ln->next;
-//       delete ln;
-//     } else {
-//       delete children;
-//       children = nullptr;
-//     }
-//   }
-// }
-
-// TreeNode* TreeNode::find(string path) {
-//   int n = 0;
-//   for (char c : path)
-//     n += (c == '/') ? 1 : 0;
-//   string *parts = new string[n], *p = parts, part;
-//   for (char c : path) {
-//     if (c == '/') {
-//       *p = part;
-//       p++;
-//     } else
-//       part += c;
-//   }
-//   p = parts;
-//   TreeNode *tn = this;
-//   for (int i = 0; i < n;) {
-//     LLNode *ln = tn->children;
-//     for (; ln != nullptr; ln = ln->next) {
-//       if (ln->node->name == *p)
-//         break;
-//     }
-//     if (ln == nullptr) {
-//       delete[] parts;
-//       return nullptr;
-//     }
-//     i++;
-//     p++;
-//   }
-//   delete[] parts;
-//   return tn;
-// }
-
-// string TreeNode::fullPath() {
-//   string path = name;
-//   for (TreeNode *p = parent; p != nullptr; p = p->parent)
-//     path = p->name + "/" + path;
-//   return path;
-// }
