@@ -46,13 +46,13 @@ struct Node {
   Node(string name, char type, int lastModified = 0);
   ~Node();
 
-  void addChild(Node *node);
-  Node* addChild(string path, char type);
+  Node* addChild(Node *node);
+  Node* addChild(string path, char type, bool recursive=false);
   Node *findChild(string name);
   void removeChild(string name);
   void removeChild(Node *node);
 
-  void addSibling(Node *node);
+  Node* addSibling(Node *node);
   Node *findSibling(string name);
   void removeSibling(Node *node);
   Node *getFirstSibling(); // returns the "head" of the tree leaf linked list

@@ -1,6 +1,6 @@
 #include "tree.hpp"
 
-/*
+/* Notes
  * Better combine the removeChild(), removeSibling() and ~Node() methods
  * Possibly handle case where remove method removes self
  * Handle for duplicate names in children/siblings (when adding sibling/child)
@@ -18,13 +18,11 @@ Node::Node(string name, char type, int lastModified)
 Node::~Node() {
   #ifdef DEBUG
   printf("Deleting %s (type: %c)\n", this->fullPath().c_str(), type);
+  // printf("Deleting %s\t(path: %s type: %c)\n", name.c_str(), this->fullPath().c_str(), type);
   #endif
-  for (; children != nullptr; children = children->next)
+  for (Node *prev = children; children != nullptr; children = prev->next) {
+    prev = children;
     delete children;
-  if (name == "folder1") {
-    cout << "folder1";
-    cout << (prev == nullptr) << '\n';
-    cout << (next == nullptr) << '\n';
   }
   if (prev != nullptr) {
     prev->next = next;
@@ -36,31 +34,39 @@ Node::~Node() {
     next->prev = prev;
 }
 
-void Node::addChild(Node *node) {
+Node* Node::addChild(Node *node) {
+  if (type == 'f')
+    return nullptr;
   node->parent = this;
   if (children == nullptr)
     children = node;
   else
     children->addSibling(node);
+  return node;
 }
 
 // returns nullptr if path already exists
-Node* Node::addChild(string path, char type) {
+Node* Node::addChild(string path, char type, bool recursive) {
   Node *n = this;
   string part = "";
   for (char c : path) {
     if (c == '/') {
-      if (part == ".")
-        continue;
-      n = n->findChild(part);
-      if (n == nullptr)
-        return n;
+      if (part != ".") {
+        Node *node = n->findChild(part);
+        if (node == nullptr) {
+          if (!recursive)
+            return node;
+          n = n->addChild(new Node(part, 'd'));
+        } else
+          n = node;
+      }
+      part = "";
     } else
       part += c;
   }
   if (n->findChild(part) != nullptr)
     return nullptr;
-  Node *child = new Node(path, type);
+  Node *child = new Node(part, type);
   n->addChild(child);
   return child;
 }
@@ -83,7 +89,7 @@ void Node::removeChild(Node *node) {
   }
 }
 
-void Node::addSibling(Node *node) {
+Node* Node::addSibling(Node *node) {
   Node *n = this;
   n->numSiblings++;
   while (n->next != nullptr) {
@@ -94,6 +100,7 @@ void Node::addSibling(Node *node) {
   node->prev = n;
   node->parent = n->parent;
   node->numSiblings = n->numSiblings;
+  return node;
 }
 
 Node* Node::findSibling(string name) {
@@ -116,10 +123,14 @@ Node *Node::getFirstSibling() {
 }
 
 vector<Node *> Node::siblingsToVector() {
-  vector<Node *> v(numSiblings);
+  // NOTE: sometimes getting malloc() corrupted top size when using resize
+  // or constructor
+  vector<Node *> v;
+  // v.resize(numSiblings);
   int i = 0;
   for (Node *n = getFirstSibling(); n != nullptr; n = n->next)
-    v[i++] = n;
+    v.push_back(n);
+    // v[i++] = n;
   return v;
 }
 
