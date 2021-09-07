@@ -4,6 +4,8 @@ import (
   "errors"
   "io/fs"
   "os"
+  "strings"
+  "sync"
 )
 
 type dirEntry struct {
@@ -12,6 +14,7 @@ type dirEntry struct {
   children []*dirEntry
   isDir bool
   lastMod int64
+  mtx sync.RWMutex
 }
 
 type FileTree struct {
@@ -34,14 +37,43 @@ func NewFileTree(rootPath string) (*FileTree, error) {
     isDir: true,
     lastMod: info.ModTime().Unix(),
   }
+  
   // Create the filesystem and walk through it
   rootFS := os.DirFS(rootPath)
   err := fs.WalkDir(rootFS, ".", func(path string, d fs.DirEntry, err error) error {
     if err != nil {
-      return err
+      return nil
     }
+    //
   })
   if err != nil {
     return nil, err
   }
+}
+
+func (ft *FileTree) Watch() {
+  //
+}
+
+func (ft *FileTree) Unwatch() {
+  //
+}
+
+func (ft *FileTree) GetOrCreate(path string) *dirEntry {
+  parts := strings.Split(path, "/")
+}
+
+type deStack []*dirEntry
+
+func (st *deStack) Push(de *dirEntry) {
+  *st = append(*st, de)
+}
+
+func (st *deStack) Pop() (de *dirEntry, got bool) {
+  l := len(st)
+  if got = (l != 0); got {
+    de = *st[l-1]
+    *st = *st[:l-1]
+  }
+  return
 }

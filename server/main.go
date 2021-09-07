@@ -8,6 +8,10 @@ import (
 )
 
 func main() {
+  split(".")
+  split("/hello/world")
+  split("hello/world/")
+  return
   rootFS := os.DirFS("./testdir")
   fmt.Println("fs.WalkDir")
   err := fs.WalkDir(rootFS, ".", walkDirFunc)
@@ -40,4 +44,8 @@ func walkFunc(path string, info fs.FileInfo, err error) error {
   }
   fmt.Printf("Path: %s, Name: %s\n", path, info.Name())
   return nil
+}
+
+func split(what string) {
+  fmt.Println(filepath.SplitList(what))
 }
